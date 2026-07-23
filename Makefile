@@ -12,7 +12,8 @@ LDFLAGS_A  = -lcurl -lpthread -Wl,-z,now -Wl,--gc-sections -Wl,-s \
 # ── Linux (x86_64) ──────────────────────────────────────────────────────
 CXXFLAGS_L = -std=c++26 -Wall -Wextra -Os -flto -ffunction-sections \
              -fdata-sections -pipe -fno-semantic-interposition \
-             -fomit-frame-pointer -fno-stack-protector -fno-math-errno
+             -fomit-frame-pointer -fno-stack-protector -fno-math-errno \
+             -Wno-unused-result
 LDFLAGS_L  = -lcurl -lpthread -Wl,-z,now -Wl,--gc-sections -Wl,-s \
              -Wl,--build-id=none -Wl,--icf=all -fuse-ld=mold
 
@@ -35,7 +36,7 @@ all android:
 	  $(TARGET) 2>/dev/null || true
 
 linux:
-	g++ -std=c++26 $(CXXFLAGS_L) -o $(TARGET) zen_proxy.cpp $(LDFLAGS_L)
+	g++ $(CXXFLAGS_L) -o $(TARGET) zen_proxy.cpp $(LDFLAGS_L)
 	strip --remove-section=.comment --remove-section=.gnu.version \
 	  --remove-section=.eh_frame --remove-section=.eh_frame_hdr \
 	  --remove-section=.gcc_except_table $(TARGET) 2>/dev/null || true
