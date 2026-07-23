@@ -57,18 +57,19 @@ jobs:
         run: ls -lh zen_proxy${{ matrix.ext }}
 
       - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: "zen_proxy ${{ github.ref_name }}"
-          body: |
-            OpenCode Zen Proxy — ${{ github.ref_name }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view ${{ github.ref_name }} &>/dev/null; then
+            gh release upload ${{ github.ref_name }} zen_proxy${{ matrix.ext }} --clobber
+          else
+            cat > /tmp/notes.md <<- EOF
+          OpenCode Zen Proxy — ${{ github.ref_name }}
 
-            Pre-built binaries for Linux (x86_64) and Windows (x86_64).
-
-            ```
-            ./zen_proxy                          # :8080, anonymous
-            ./zen_proxy -p 9090 -k sk-xxxxx     # custom port + key
-            ```
-          files: zen_proxy${{ matrix.ext }}
-          draft: false
-          prerelease: false
+          Pre-built binaries for Linux (x86_64) and Windows (x86_64).
+          EOF
+            gh release create ${{ github.ref_name }} \
+              --title "zen_proxy ${{ github.ref_name }}" \
+              --notes-file /tmp/notes.md \
+              zen_proxy${{ matrix.ext }}
+          fi
