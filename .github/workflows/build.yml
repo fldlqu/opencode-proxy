@@ -64,10 +64,9 @@ jobs:
           if gh release view ${{ github.ref_name }} &>/dev/null; then
             gh release upload ${{ github.ref_name }} zen_proxy${{ matrix.ext }} --clobber
           else
-            echo "OpenCode Zen Proxy — ${{ github.ref_name }}
-
-Pre-built binaries for Linux (x86_64) and Windows (x86_64)." > /tmp/notes.md
-            gh release create ${{ github.ref_name }} \
+            printf 'OpenCode Zen Proxy - %s\n\nPre-built binaries for Linux (x86_64) and Windows (x86_64).\n' \
+              "${{ github.ref_name }}" > /tmp/notes.md
+            gh release create "${{ github.ref_name }}" \
               --title "zen_proxy ${{ github.ref_name }}" \
               --notes-file /tmp/notes.md \
               zen_proxy${{ matrix.ext }}
