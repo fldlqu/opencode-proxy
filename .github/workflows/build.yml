@@ -10,10 +10,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  linux:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +30,7 @@ jobs:
       - name: Size
         run: ls -lh zen_proxy
 
-      - name: Create Release
+      - name: Upload Linux binary
         if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
@@ -40,10 +38,45 @@ jobs:
           if gh release view "${{ github.ref_name }}" &>/dev/null; then
             gh release upload "${{ github.ref_name }}" zen_proxy --clobber
           else
-            printf 'OpenCode Zen Proxy - %s\n\nPre-built Linux x86_64 binary.\n' \
+            printf 'OpenCode Zen Proxy - %s\n\nPre-built binaries for Linux and Windows.\n' \
               "${{ github.ref_name }}" > /tmp/notes.md
             gh release create "${{ github.ref_name }}" \
               --title "zen_proxy ${{ github.ref_name }}" \
-              --notes-file /tmp/notes.md \
-              zen_proxy
+              --notes-file /tmp/notes.md
+            gh release upload "${{ github.ref_name }}" zen_proxy
           fi
+
+  windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install MinGW cross-toolchain
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq g++-mingw-w64-x86-64 \
+            mingw-w64-x86-64-dev mingw-w64-x86-64-curl mold
+
+      - name: Build
+        run: |
+          CXX=x86_64-w64-mingw32-g++-posix
+          STD=c++23
+          echo | $CXX -std=c++26 -dM -E -x c++ - 2>/dev/null && STD=c++26 || true
+          $CXX -std=$STD -Wall -Wextra -Os -flto \
+            -ffunction-sections -fdata-sections -pipe \
+            -fomit-frame-pointer -fno-stack-protector \
+            -fno-math-errno \
+            -D_WIN32_WINNT=0x0601 \
+            -o zen_proxy.exe zen_proxy.cpp \
+            -lcurl -lws2_32 -lpthread \
+            -Wl,--gc-sections -Wl,-s -Wl,--build-id=none 2>&1
+
+      - name: Size
+        run: ls -lh zen_proxy.exe
+
+      - name: Upload Windows binary
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.ref_name }}" zen_proxy.exe --clobber
