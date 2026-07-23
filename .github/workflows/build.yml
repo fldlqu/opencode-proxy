@@ -8,69 +8,68 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x86_64
+            install: sudo apt-get update -qq && sudo apt-get install -y -qq g++ libcurl4-openssl-dev
+            strip: strip
+            ext: ""
+
+          - os: windows-latest
+            name: windows-x86_64
+            shell: msys2 {0}
+            install: pacman -S --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-curl
+            strip: true
+            ext: .exe
+
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: ${{ matrix.shell || 'bash' }}
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Android NDK
+      - name: Setup MSYS2 (Windows only)
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+
+      - name: Install dependencies
+        run: ${{ matrix.install }}
+
+      - name: Build
         run: |
-          curl -sL https://dl.google.com/android/repository/android-ndk-r28-linux.zip -o ndk.zip
-          unzip -q ndk.zip
-          echo "NDK=$PWD/android-ndk-r28" >> $GITHUB_ENV
-          echo "TOOLCHAIN=$PWD/android-ndk-r28/toolchains/llvm/prebuilt/linux-x86_64" >> $GITHUB_ENV
-
-      - name: Build libcurl for Android
-        run: |
-          export PATH="$TOOLCHAIN/bin:$PATH"
-          export CC=aarch64-linux-android24-clang
-          export CXX=aarch64-linux-android24-clang++
-          export AR=llvm-ar
-          export RANLIB=llvm-ranlib
-          export CFLAGS="-Oz -flto -ffunction-sections -fdata-sections"
-          export CXXFLAGS="-Oz -flto -ffunction-sections -fdata-sections"
-
-          curl -sL https://curl.se/download/curl-8.13.0.tar.gz -o curl.tar.gz
-          tar xzf curl.tar.gz
-          cd curl-8.13.0
-          ./configure --host=aarch64-linux-android \
-                      --disable-shared --enable-static \
-                      --with-pic --without-ssl --without-zlib \
-                      --disable-ftp --disable-file --disable-ldap \
-                      --disable-ldaps --disable-rtsp --disable-proxy \
-                      --disable-dict --disable-telnet --disable-tftp \
-                      --disable-pop3 --disable-imap --disable-smtp \
-                      --disable-gopher --disable-mqtt --disable-manual \
-                      --disable-doh --disable-alt-svc \
-                      --disable-hsts --disable-websockets \
-                      --enable-ipv6 --enable-tcp-nodelay
-          make -j$(nproc) 2>/dev/null
-          echo "CURL_DIR=$PWD" >> $GITHUB_ENV
-
-      - name: Build zen_proxy
-        run: |
-          export PATH="$TOOLCHAIN/bin:$PATH"
-          export CXX=aarch64-linux-android24-clang++
-          export CURL=$CURL_DIR
-
-          $CXX -std=c++26 -Wall -Wextra -Oz -flto \
+          CFLAGS="-std=c++26 -Wall -Wextra -Os -flto \
             -ffunction-sections -fdata-sections -pipe \
-            -fno-semantic-interposition -fomit-frame-pointer \
-            -fno-stack-protector -fno-math-errno -fno-ident \
-            -I$CURL/include \
-            -o zen_proxy zen_proxy.cpp \
-            $CURL/lib/.libs/libcurl.a \
-            -Wl,-z,now -Wl,--gc-sections -Wl,-s \
-            -Wl,--build-id=none -Wl,--icf=all
+            -fomit-frame-pointer -fno-stack-protector \
+            -fno-math-errno -fno-semantic-interposition"
 
-          $TOOLCHAIN/bin/llvm-objcopy --remove-section=.comment \
-            --remove-section=.note.android.ident \
+          LDFLAGS="-lcurl -lpthread \
+            -Wl,--gc-sections -Wl,-s -Wl,--build-id=none"
+
+          g++ $CFLAGS -o zen_proxy${{ matrix.ext }} \
+            zen_proxy.cpp $LDFLAGS
+
+      - name: Strip (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          strip --remove-section=.comment \
             --remove-section=.gnu.version \
             --remove-section=.eh_frame \
             --remove-section=.eh_frame_hdr \
             --remove-section=.gcc_except_table \
-            zen_proxy
-
+            zen_proxy 2>/dev/null || true
           ls -lh zen_proxy
+
+      - name: Size (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          ls -lh zen_proxy${{ matrix.ext }}
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -79,9 +78,14 @@ jobs:
           body: |
             OpenCode Zen Proxy — ${{ github.ref_name }}
 
-            - 23.6K statically linked Android aarch64 binary
-            - C++26, zero warnings
-            - Automatic model→endpoint routing
-          files: zen_proxy
+            Pre-built binaries:
+            - **Linux** (x86_64, dynamically linked against libcurl)
+            - **Windows** (x86_64, MSYS2/Mingw64, dynamically linked)
+
+            ```
+            ./zen_proxy                          # :8080, anonymous
+            ./zen_proxy -p 9090 -k sk-xxxxx     # custom port + key
+            ```
+          files: zen_proxy${{ matrix.ext }}
           draft: false
           prerelease: false

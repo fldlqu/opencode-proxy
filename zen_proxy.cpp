@@ -323,7 +323,7 @@ static void handle_client(int fd) {
   // GET: forward as-is
   if (req.method == "GET") {
     Response up = curl_req("GET", g_config.zen_base + req.path, {}, {});
-    dprintf(2, "[P] G %s>%s%s\n",
+    fprintf(stderr, "[P] G %s>%s%s\n",
             req.path.c_str(), g_config.zen_base.c_str(), req.path.c_str());
     send_resp(fd, up);
     close(fd);
@@ -355,7 +355,7 @@ static void handle_client(int fd) {
   }
 
   std::string ep = route(model);
-  dprintf(2, "[P] %s %s>%s m=%s s=%s\n",
+  fprintf(stderr, "[P] %s %s>%s m=%s s=%s\n",
           req.method.c_str(), req.path.c_str(), ep.c_str(),
           model.c_str(), stream ? "true" : "false");
 
@@ -386,7 +386,7 @@ static void sig_handler(int) {
 // Print usage
 // ---------------------------------------------------------------------------
 static void usage(const char *p) {
-  dprintf(2,
+  fprintf(stderr,
     "OC Zen Proxy\n"
     "Usage: %s [options]\n"
     "\n"
@@ -432,7 +432,7 @@ int main(int argc, char **argv) {
   addr.sin_port = htons((uint16_t)g_config.port);
 
   if (bind(sfd, (struct sockaddr *)&addr, sizeof addr) < 0) {
-    dprintf(2, "[P] bind %d\n", g_config.port);
+    fprintf(stderr, "[P] bind %d\n", g_config.port);
     close(sfd);
     return 1;
   }
