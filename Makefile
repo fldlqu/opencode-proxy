@@ -35,7 +35,7 @@ all android:
 	  $(TARGET) 2>/dev/null || true
 
 linux:
-	$(CXX) $(CXXFLAGS_L) -o $(TARGET) zen_proxy.cpp $(LDFLAGS_L)
+	g++ -std=c++26 $(CXXFLAGS_L) -o $(TARGET) zen_proxy.cpp $(LDFLAGS_L)
 	strip --remove-section=.comment --remove-section=.gnu.version \
 	  --remove-section=.eh_frame --remove-section=.eh_frame_hdr \
 	  --remove-section=.gcc_except_table $(TARGET) 2>/dev/null || true
