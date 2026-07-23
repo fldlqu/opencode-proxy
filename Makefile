@@ -14,7 +14,7 @@ CXXFLAGS_L = -std=c++26 -Wall -Wextra -Os -flto -ffunction-sections \
              -fdata-sections -pipe -fno-semantic-interposition \
              -fomit-frame-pointer -fno-stack-protector -fno-math-errno
 LDFLAGS_L  = -lcurl -lpthread -Wl,-z,now -Wl,--gc-sections -Wl,-s \
-             -Wl,--build-id=none
+             -Wl,--build-id=none -Wl,--icf=all -fuse-ld=mold
 
 # ── Windows (MinGW-w64) ────────────────────────────────────────────────
 CXXFLAGS_W = -std=c++26 -Wall -Wextra -Os -flto -ffunction-sections \
