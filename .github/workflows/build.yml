@@ -79,7 +79,9 @@ jobs:
             --disable-mqtt --disable-manual --disable-doh \
             --disable-hsts --disable-websockets \
             --enable-ipv6 --enable-tcp-nodelay \
-            --disable-threaded-resolver 2>&1 | tail -3
+            --disable-threaded-resolver \
+            --without-libpsl --without-brotli --without-zstd \
+            --without-libidn2 --without-nghttp2 2>&1 | tail -3
           make -j$(nproc) 2>/dev/null
           echo "CURL_DIR=$PWD" >> $GITHUB_ENV
 
