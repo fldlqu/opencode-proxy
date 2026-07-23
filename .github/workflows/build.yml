@@ -55,7 +55,33 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq g++-mingw-w64-x86-64 \
-            mingw-w64-x86-64-dev mingw-w64-x86-64-curl mold
+            mingw-w64-x86-64-dev mold
+
+      - name: Cross-compile libcurl for Windows
+        run: |
+          export PATH=/usr/x86_64-w64-mingw32/bin:$PATH
+          export CC=x86_64-w64-mingw32-gcc
+          export CXX=x86_64-w64-mingw32-g++-posix
+          export AR=x86_64-w64-mingw32-ar
+          export RANLIB=x86_64-w64-mingw32-ranlib
+          export CFLAGS="-Os -flto -ffunction-sections -fdata-sections"
+
+          curl -sL https://curl.se/download/curl-8.13.0.tar.gz -o curl.tar.gz
+          tar xzf curl.tar.gz
+          cd curl-8.13.0
+          ./configure --host=x86_64-w64-mingw32 \
+            --disable-shared --enable-static \
+            --with-pic --without-ssl --without-zlib \
+            --disable-ftp --disable-ldap --disable-ldaps \
+            --disable-rtsp --disable-proxy --disable-dict \
+            --disable-telnet --disable-tftp --disable-pop3 \
+            --disable-imap --disable-smtp --disable-gopher \
+            --disable-mqtt --disable-manual --disable-doh \
+            --disable-hsts --disable-websockets \
+            --enable-ipv6 --enable-tcp-nodelay \
+            --disable-threaded-resolver 2>&1 | tail -3
+          make -j$(nproc) 2>/dev/null
+          echo "CURL_DIR=$PWD" >> $GITHUB_ENV
 
       - name: Build
         run: |
@@ -67,8 +93,10 @@ jobs:
             -fomit-frame-pointer -fno-stack-protector \
             -fno-math-errno \
             -D_WIN32_WINNT=0x0601 \
+            -I$CURL_DIR/include \
             -o zen_proxy.exe zen_proxy.cpp \
-            -lcurl -lws2_32 -lpthread \
+            $CURL_DIR/lib/.libs/libcurl.a \
+            -lws2_32 -lpthread \
             -Wl,--gc-sections -Wl,-s -Wl,--build-id=none 2>&1
 
       - name: Size

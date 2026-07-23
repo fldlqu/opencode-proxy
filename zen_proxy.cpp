@@ -14,17 +14,20 @@
 
 #include <csignal>
 #include <cstdio>
-#include <cstring>
 #include <string>
 #include <vector>
 
-#include <poll.h>
-#include <pthread.h>
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
+#ifdef _WIN32
+  #include <winsock2.h>
+  #include <windows.h>
+#else
+  #include <poll.h>
+  #include <pthread.h>
+  #include <arpa/inet.h>
+  #include <netinet/in.h>
+  #include <sys/socket.h>
+  #include <unistd.h>
+#endif
 
 #include <curl/curl.h>
 
@@ -443,12 +446,11 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  struct sigaction sa;
-  memset(&sa, 0, sizeof sa);
-  sa.sa_handler = sig_handler;
-  sigaction(SIGINT, &sa, nullptr);
-  sigaction(SIGTERM, &sa, nullptr);
+  signal(SIGINT, sig_handler);
+  signal(SIGTERM, sig_handler);
+#ifdef SIGPIPE
   signal(SIGPIPE, SIG_IGN);
+#endif
 
   char _b[512];
   int _n = snprintf(_b, sizeof _b,
