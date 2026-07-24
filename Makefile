@@ -7,7 +7,8 @@ CXXFLAGS_A = -std=c++26 -Wall -Wextra -Oz -flto -ffunction-sections \
              -fomit-frame-pointer -fno-stack-protector \
              -fno-math-errno -fno-ident
 LDFLAGS_A  = -lcurl -lpthread -Wl,-z,now -Wl,--gc-sections -Wl,-s \
-             -Wl,--build-id=none -Wl,--icf=all -fuse-ld=mold
+             -Wl,--build-id=none -Wl,--icf=all -fuse-ld=mold \
+             -Wl,--plugin,lib/LLVMgold.so.llvm21_termux
 
 # ── Linux (x86_64) ──────────────────────────────────────────────────────
 CXXFLAGS_L = -std=c++26 -Wall -Wextra -Os -flto -ffunction-sections \
